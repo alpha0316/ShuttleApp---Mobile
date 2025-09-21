@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,11 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+   Animated,
+  PanGestureHandler,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import { Image } from 'react-native';
 import Svg, { Path, Mask , G} from 'react-native-svg';
@@ -37,8 +41,126 @@ const Index = () => {
   const [isSelectingDropOff, setIsSelectingDropOff] = useState(false);
   const [isMobile, setIsMobile] = useState(Dimensions.get('window').width <= 600); // Initial check: mobile if width <= 600 DP
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
-    const [dropOffSearchQuery, setDropOffSearchQuery] = useState('');
+  const [dropOffSearchQuery, setDropOffSearchQuery] = useState('');
+  const [dropOffSelected, setDropOffSelected] = useState<Location | null>(null);
+  const [showTracker, setShowTracker] = useState(false)
+  const [showGeneral, SetShowGeneral] = useState(true)
+  const [showBusStop, SetShowBusStop] = useState(false)
+  const [isInputFocused, setIsInputFocused] = useState(false); 
+  const textInputRef = useRef(null);
 
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  
+
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT * 0.6)).current;
+  const lastGesture = useRef(SCREEN_HEIGHT * 0.6);
+
+  const minHeight = SCREEN_HEIGHT * 0.3; // 30% from top
+  const maxHeight = SCREEN_HEIGHT * 0.85; // 85% from top
+
+  const onGestureEvent = Animated.event(
+    [{ nativeEvent: { translationY: translateY } }],
+    {
+      useNativeDriver: true,
+      listener: (event) => {
+        const { translationY } = event.nativeEvent;
+        const newValue = lastGesture.current + translationY;
+        
+        if (newValue < minHeight) {
+          translateY.setValue(minHeight - lastGesture.current);
+        } else if (newValue > maxHeight) {
+          translateY.setValue(maxHeight - lastGesture.current);
+        }
+      }
+    }
+  );
+
+    const onHandlerStateChange = (event) => {
+    const { translationY, velocityY, state } = event.nativeEvent;
+    
+    if (state === 5) { // GESTURE_STATE_END
+      const currentPosition = lastGesture.current + translationY;
+      const threshold = SCREEN_HEIGHT * 0.5;
+      
+      let finalPosition;
+      
+      if (Math.abs(velocityY) > 500) {
+        finalPosition = velocityY > 0 ? SCREEN_HEIGHT * 0.6 : minHeight;
+      } else {
+        finalPosition = currentPosition > threshold ? SCREEN_HEIGHT * 0.6 : minHeight;
+      }
+      
+      Animated.spring(translateY, {
+        toValue: finalPosition - lastGesture.current,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start(() => {
+        lastGesture.current = finalPosition;
+        translateY.setValue(0);
+      });
+    }
+  };
+
+
+  const BackArrow = ({ onPress, width = 7, height = 14, strokeColor = 'black', strokeOpacity = 0.6, strokeWidth = 1.5, ...props }) => {
+  const handlePress = typeof onPress === 'function' ? onPress : () => console.warn('onPress is not a function');
+  return (
+    <TouchableOpacity onPress={handlePress} {...props}>
+      <Svg width={width} height={height} viewBox="0 0 7 14" fill="none">
+        <Path
+          d="M6.00022 12.2802L1.65355 7.93355C1.14022 7.42021 1.14022 6.58021 1.65355 6.06688L6.00022 1.72021"
+          stroke={strokeColor}
+          strokeOpacity={strokeOpacity}
+          strokeWidth={strokeWidth}
+          strokeMiterlimit="10"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </TouchableOpacity>
+  );
+};
+
+    const handleInputFocus = () => {
+    setIsInputFocused(true);
+    console.log('TextInput focused'); // For debugging
+    // Add your focus-related logic here, e.g., show suggestions or change UI
+  };
+
+    const handleInputBlur = () => {
+    setIsInputFocused(false);
+    console.log('TextInput blurred'); // For debugging
+    // Add blur-related logic here, e.g., hide suggestions
+  };
+
+    useEffect (() =>{
+    if(selectedDropPoint) {
+      setShowTracker(true)
+      // console.log('here', 'drop:', selectedDropPoint.name,'start:', searchQuery );
+    }
+  })
+
+  const navback = () => {
+    setShowTracker(false);
+    // SetShowGeneral(false);
+    // SetShowBusStop(false);
+    // setSearchQuery('');
+    setSelectedDropPoint(null);
+    // textInputRef.current?.blur();
+  };
+
+
+  const handleShowBusStop = () => {
+    SetShowBusStop(true)
+    SetShowGeneral(false)
+  }
+
+    const handleGeneral = () => {
+    SetShowBusStop(false)
+    SetShowGeneral(true)
+  }
 
     useEffect(() => {
     const updateDeviceType = () => {
@@ -60,9 +182,13 @@ const Index = () => {
     setSelectedDropPoint(null); // Clear previous drop-off point
   };
 
+    const dropOffPoint = (location: Location) => {
+      setDropOffSelected(location)
+  };
+
 
   const handleDropOffPointClick = (dropPoint: DropPoint) => {
-    console.log('Drop Off Point Clicked:', dropPoint.name);
+    // console.log('Drop Off Point Clicked:', 'drop:', selectedDropPoint, ':', searchQuery);
     setSelectedDropPoint(dropPoint);
     setDropOffSearchQuery(''); // Clear drop-off search after selection
   };
@@ -79,27 +205,42 @@ const Index = () => {
     setSelectedDropPoint(null);
   };
 
+
+
+
+
   return (
     <View style={{ flex: 1, position: 'relative' }}>
       {/* Map as background - takes full screen */}
+      
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         <OpenMap />
       </View>
 
+
       {/* Welcome component positioned at bottom */}
-      {/* <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      
+      <View style={{ 
+            position: 'absolute', 
+            bottom: isInputFocused ? 300 : 0, 
+            left: 0, 
+            right: 0, 
+            display: showTracker ? 'none' : 'block', 
+          
+        }}> 
         <View style={styles.bottomContainer}>
+          <View style={styles.handle} />
           {/* Header text */}
-          {/* <Text style={styles.welcomeText}>
+          <Text style={styles.welcomeText}>
             <Text style={styles.boldText}>Welcome To </Text>
             <Text style={styles.shuttleText}>Shuttle</Text>
             <Text style={styles.appText}>App</Text>
-          </Text> */}
+          </Text>
 
           {/* Point Selection */}
-           {/* <View style={styles.pointSelectionContainer}>
+           <View style={styles.pointSelectionContainer}>
             {/* Starting Point */}
-            {/* <View style={styles.inputContainer}>
+            <View style={styles.inputContainer}>
               <Text style={[styles.label, { fontSize: isMobile ? wp(3.5) : wp(4) }]}>
                 Starting Point
               </Text>
@@ -114,7 +255,7 @@ const Index = () => {
                   </Svg>
                 </View>
                 <View style={styles.textInputContainer}>
-                   <Svg xmlns="http://www.w3.org/2000/svg" width="12" height="13" viewBox="0 0 12 13" fill="none">
+                   <Svg  width="12" height="13" viewBox="0 0 12 13" fill="none">
                       <Path d="M11.3542 12.36C11.6609 12.6667 12.1342 12.1934 11.8276 11.8934L9.32755 9.38671C10.2045 8.41638 10.6893 7.1546 10.6876 5.84671C10.6876 2.92004 8.30755 0.540039 5.38089 0.540039C2.45422 0.540039 0.0742188 2.92004 0.0742188 5.84671C0.0742188 8.77337 2.45422 11.1534 5.38089 11.1534C6.70089 11.1534 7.92089 10.6667 8.85422 9.86004L11.3542 12.36ZM0.740219 5.84671C0.740219 3.28671 2.82688 1.20671 5.38022 1.20671C7.94022 1.20671 10.0202 3.28671 10.0202 5.84671C10.0202 8.40671 7.94022 10.4867 5.38022 10.4867C2.82688 10.4867 0.740219 8.40671 0.740219 5.84671Z" fill="black" fill-opacity="0.6"/>
                     </Svg>
                   <TextInput
@@ -122,6 +263,9 @@ const Index = () => {
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={[styles.textInput, { fontSize: isMobile ? wp(3.5) : wp(4) }]}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
+                    ref={textInputRef}
                   />
                   {(searchQuery || selectedLocation) && (
                     <TouchableOpacity onPress={clearStartingPoint}>
@@ -137,13 +281,18 @@ const Index = () => {
 
                 </View>
               </View>
-            </View> */}
+            </View> 
 
             {/* Separator */}
-            {/* <View style={[styles.separator, { marginHorizontal: isMobile ? wp(8) : wp(6) }]} /> */}
+            {
+              isSelectingDropOff &&  (
+                  <View style={styles.separator} />
+              )
+            }
+            
 
             {/* Drop-Off Filter Input (shown only when selecting drop-off) */}
-            {/* {isSelectingDropOff && (
+            {isSelectingDropOff && (
               <View style={styles.inputContainer}>
                 <Text style={[styles.label, { fontSize: isMobile ? wp(3.5) : wp(4) }]}>
                   Filter Drop-Off Points
@@ -159,12 +308,12 @@ const Index = () => {
                     </Svg>
                   </View>
                   <View style={styles.textInputContainer}>
-                    <Svg xmlns="http://www.w3.org/2000/svg" width="12" height="13" viewBox="0 0 12 13" fill="none">
+                    <Svg width="12" height="13" viewBox="0 0 12 13" fill="none">
                       <Path d="M11.3542 12.36C11.6609 12.6667 12.1342 12.1934 11.8276 11.8934L9.32755 9.38671C10.2045 8.41638 10.6893 7.1546 10.6876 5.84671C10.6876 2.92004 8.30755 0.540039 5.38089 0.540039C2.45422 0.540039 0.0742188 2.92004 0.0742188 5.84671C0.0742188 8.77337 2.45422 11.1534 5.38089 11.1534C6.70089 11.1534 7.92089 10.6667 8.85422 9.86004L11.3542 12.36ZM0.740219 5.84671C0.740219 3.28671 2.82688 1.20671 5.38022 1.20671C7.94022 1.20671 10.0202 3.28671 10.0202 5.84671C10.0202 8.40671 7.94022 10.4867 5.38022 10.4867C2.82688 10.4867 0.740219 8.40671 0.740219 5.84671Z" fill="black" fill-opacity="0.6"/>
                     </Svg>
                     <TextInput
                     placeholder="Enter dropOff point"
-                    value={selectedDropPoint?.name || ''}
+                    value={typeof selectedDropPoint?.name === 'string' ? selectedDropPoint.name : (typeof dropOffSelected === 'string' ? dropOffSelected : undefined)}
                     style={[styles.textInput, { fontSize: isMobile ? wp(3.5) : wp(4) }]}
                     editable={false}
 
@@ -183,53 +332,38 @@ const Index = () => {
                   </View>
                 </View>
               </View>
-            )} */}
-          {/* </View>  */}
+            )}
+         </View> 
 
           {/* Location List */}
-          {/* <LocationList
+          <LocationList
             searchQuery={searchQuery}
-            selectedLocation={selectedLocation}
+            selectedLocation={selectedLocation as Location | null | undefined}
             locations={locations}
             isSelectingDropOff={isSelectingDropOff}
             handleDropOffPointClick={handleDropOffPointClick}
             handleStartPointClick={handleStartPointClick}
             isMobile={isMobile}
           />
-        </View> */}
-      {/* // </View>  */}
+        </View>
+       </View> 
 
 
       {/* Tracker - Positioned at top right */}
-
-      {/* General */}
-       {/* <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+          {/* General */}
+       <View style={{ position: 'absolute', bottom: showGeneral? -225 : 0, left: 0, right: 0, display : showTracker ? 'block' : 'none' }}>
         <View style={styles.bottomContainer}>
-           <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-            <Svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="7"
-              height="14"
-              viewBox="0 0 7 14"
-              fill="none"
-            >
-              <Path
-                d="M6.00022 12.2802L1.65355 7.93355C1.14022 7.42021 1.14022 6.58021 1.65355 6.06688L6.00022 1.72021"
-                stroke="black"
-                strokeOpacity="0.6"
-                strokeWidth="1.5"
-                strokeMiterlimit="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
+         <View style={styles.handle} />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            <BackArrow onPress={navback} />
+          
             <View style={{ flex: 1, alignItems: 'center' }}>
               <Text style={{ textAlign: 'center',
                 color: 'rgba(0,0,0,0.6)',
                }}>Bus will arrive in 10 minutes</Text>
             </View>
           </View>
-
         <View style={{
           display: 'flex',
           flexDirection: 'row',
@@ -240,7 +374,10 @@ const Index = () => {
           borderBottomColor : 'rgba(0,0,0,0.1)',
           paddingHorizontal : 16
         }}>
-            <View style={{
+
+          <TouchableOpacity 
+          onPress={handleGeneral}    
+          style={{
               display: 'flex',
               // flexDirection: 'row',
               alignItems: 'center',
@@ -248,16 +385,19 @@ const Index = () => {
               gap : 4
             }}>
               <Text style={{
-                color : '#34A853',
+                color : showGeneral? '#34A853' :  '#rgba(0,0,0,0.6)',
               }}>General</Text>
               <View style={{
                 width: '100%',
                 height : 2,
                 backgroundColor: '#34A853',
+                display: showGeneral? 'block' : 'none'
               }}/>
-            </View>
-
-              <View style={{
+          </TouchableOpacity>
+            
+          <TouchableOpacity
+          onPress={handleShowBusStop}    
+          style={{
               display: 'flex',
               // flexDirection: 'row',
               alignItems: 'center',
@@ -265,19 +405,26 @@ const Index = () => {
               gap : 4
             }}>
               <Text style={{
-                color : '#rgba(0,0,0,0.6)',
+                color : showBusStop? '#34A853' :  '#rgba(0,0,0,0.6)',
               }}>Bus Stop</Text>
               <View style={{
                 width: '100%',
                 height : 2,
                 backgroundColor: '#34A853',
-                display: 'none'
+                display: showBusStop? 'block' : 'none'
               }}/>
-            </View>
+          </TouchableOpacity>
+
+          
             
         </View>
 
-        
+
+          {/* General */}
+        <View style={{
+          display : showGeneral? 'flex' : 'none',
+          gap: 12
+        }}>
 
           <View style={{
             display: 'flex',
@@ -965,176 +1112,11 @@ const Index = () => {
 
         </View>
 
-      
-      </View> */}
-
-      {/* Bus Stops */}
-       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-        <View style={styles.bottomContainer}>
-           <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-            <Svg
-           
-              width="7"
-              height="14"
-              viewBox="0 0 7 14"
-              fill="none"
-            >
-              <Path
-                d="M6.00022 12.2802L1.65355 7.93355C1.14022 7.42021 1.14022 6.58021 1.65355 6.06688L6.00022 1.72021"
-                stroke="black"
-                strokeOpacity="0.6"
-                strokeWidth="1.5"
-                strokeMiterlimit="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ textAlign: 'center',
-                color: 'rgba(0,0,0,0.6)',
-               }}>Bus will arrive in 10 minutes</Text>
-            </View>
-          </View>
-
-
-
-        <View style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          width: '100%',
-          marginTop : 8,
-          borderBottomWidth : 1,
-          borderBottomColor : 'rgba(0,0,0,0.1)',
-          alignItems : 'center',
-          paddingHorizontal : 16,
-        }}>
-            <View style={{
-              display: 'flex',
-              // flexDirection: 'row',
-              alignItems: 'center',
-              width:'50%',
-              gap : 4
-            }}>
-              <Text style={{
-                color : '#rgba(0,0,0,0.6)',
-              }}>General</Text>
-              <View style={{
-                width: '100%',
-                height : 2,
-                backgroundColor: '#34A853',
-                display: 'none',
-            
-              }}/>
-            </View>
-
-             <View style={{
-              display: 'flex',
-              // flexDirection: 'row',
-              alignItems: 'center',
-              width:'50%',
-              gap : 4
-            }}>
-              <Text style={{
-                color : '#34A853',
-              }}>Bus Stop</Text>
-               <View style={{
-                width: '100%',
-                height : 2,
-                backgroundColor: '#34A853',
-              }}/>
-            </View>
-            
-        </View>
-
-         <View style={{
-                display: 'flex',
-                alignItems : 'center',
-                gap : 8,
-                flexDirection : 'row',
-                justifyContent : 'space-between',
-                width: '100%',
-              }}>
-
-                <View style={{
-                  display: 'flex',
-                  alignItems : 'center',
-                  gap : 12,
-                  flexDirection : 'row',
-                }}>
-
-                  <View style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(52, 168, 83, 0.30)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <View style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: 12,
-                      backgroundColor: '#34A853', 
-                    }}/>
-                  </View>
-                  <Text style={{
-                    fontSize: 14,
-                  }}>Brunei</Text>
-
-
-                </View>
-
-                <View style={{
-                  display: 'flex',
-                  alignItems : 'center',
-                  gap : 8,
-                  flexDirection : 'row',
-                }}>
-
-                  <View style={{
-                    display: 'flex',
-                    alignItems : 'center',
-                    flexDirection : 'row',
-                  }}>
-                    <Image 
-                    source={require('./../assets/images/Avatar Image.png')}
-                    style={{
-                      // width: 32,
-                      // height: 32,
-                      // marginLeft: -8,
-
-                    }}/>
-
-                     <Image 
-                    source={require('./../assets/images/user2.png')}
-                    style={{
-                      // width: 32,
-                      // height: 32,
-                      marginLeft: -8,
-
-                    }}/>
-
-                     <Image 
-                    source={require('./../assets/images/user3.png')}
-                    style={{
-                      // width: 32,
-                      // height: 32,
-                      marginLeft: -8,
-
-                    }}/>
-
-                  </View>
-
-                  <Text style={{
-                    fontSize: 12,
-                    color: 'rgba(0,0,0,0.6)',
-                  }}>10+ waiting</Text>
-                </View>
-
-         </View>
-
+         {/* Bus Stops */}
+      <View style={{
+        display : showBusStop? 'flex' : 'none',
+      }}>
+        <View>
          <Text style={{
           color: 'rgba(0,0,0,0.6)',
          }}> <Text style={{
@@ -1733,6 +1715,11 @@ const Index = () => {
        
 
       </View>
+
+        </View>
+
+      
+      </View>
       
     </View>
 
@@ -1749,6 +1736,9 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     alignItems: 'flex-start',
     gap: 10,
+    borderWidth : 1,
+    borderColor: 'rgba(0,0,0,0.2)',
+    // maxHeight : '400vh'
   },
   welcomeText: {
     textAlign: 'left',
@@ -1814,12 +1804,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   separator: {
-    // marginHorizontal: 24,
+    marginHorizontal: 26,
     borderWidth: 1,
     height: 20,
     width: 1,
-    marginHorizontal : 24,
-    // backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+   handle: {
+    width: 58,
+    height: 6,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
+    alignSelf: 'center',
+    // marginTop: 12,
+    marginBottom: 4,
   },
 });
 

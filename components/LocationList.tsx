@@ -58,7 +58,9 @@ const LocationList: React.FC<LocationListProps> = ({
         )
       : locations;
 
-  console.log('Filtered Items:', filteredItems);
+  // console.log('Filtered Items:', filteredItems);
+
+
 
 
 

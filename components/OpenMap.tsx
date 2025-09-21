@@ -13,10 +13,10 @@ const { width, height } = Dimensions.get('window');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
   const [region, setRegion] = useState({
-    latitude: 6.6745,
-    longitude: -1.5716,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
+      latitude: location?.coords?.latitude ? location.coords.latitude - 0.005 : 0,
+      longitude: location?.coords?.longitude ?? 0,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
   });
   const mapRef = React.useRef<MapView>(null);
 
@@ -31,7 +31,7 @@ const { width, height } = Dimensions.get('window');
       let location = await Location.getCurrentPositionAsync({});
       setLocation(location);
       setRegion({
-        latitude: location.coords.latitude,
+        latitude: location.coords.latitude ,
         longitude: location.coords.longitude,
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
@@ -50,7 +50,7 @@ const { width, height } = Dimensions.get('window');
   if (location) {
     // You'll need a ref to your MapView
     mapRef.current?.animateToRegion({
-      latitude: location.coords.latitude,
+      latitude: location.coords.latitude  - 0.005,
       longitude: location.coords.longitude,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
