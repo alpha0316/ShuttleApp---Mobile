@@ -135,12 +135,12 @@ const styles = StyleSheet.create({
     // padding: 12,
     display: 'flex',
     gap: 24,
-    maxHeight: '40%',
+    maxHeight: '100%',
     width: 360,
   },
   mobileContainer: {
     width: '100%', // Adjust for mobile
-    maxHeight: 300, // Adjust height for mobile
+    maxHeight: 700, // Adjust height for mobile
     display: 'flex',
     gap: 16,
   },
