@@ -1,24 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    View,
+    Animated,
+    Dimensions,
+    Image,
+    PanResponder,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
-    StyleSheet,
-    Dimensions,
-    Platform,
     TouchableOpacity,
-    StatusBar,
-    SafeAreaView,
-    ScrollView,
-    Animated,
-    PanResponder,
+    View
 } from 'react-native';
-import { Image } from 'react-native';
-import Svg, { Path, Mask, G } from 'react-native-svg';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import OpenMap from '../../components/OpenMap';
-import LocationList from '../../components/LocationList';
+import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import Svg, { G, Mask, Path } from 'react-native-svg';
 import { locations } from '../../app/data/location';
+import LocationList from '../../components/LocationList';
+import OpenMap from '../../components/OpenMap';
 
 // BottomSheet Component Implementation
 const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode }, ref) => {
@@ -58,7 +55,7 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
             }
         },
         isActive: () => {
-            return panY.__getValue() < screenHeight;
+            return panY.setValue() < screenHeight;
         }
     }));
 
@@ -170,6 +167,7 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
 });
 
 type DropPoint = {
+    id: string;
     name: string;
     latitude: number;
     longitude: number;
@@ -294,7 +292,23 @@ const ShuttlePage = () => {
         );
     };
 
-    const BackArrow = ({ onPress, width = 7, height = 14, strokeColor = 'black', strokeOpacity = 0.6, strokeWidth = 1.5, ...props }) => {
+    const BackArrow = ({
+        onPress,
+        width = 7,
+        height = 14,
+        strokeColor = 'black',
+        strokeOpacity = 0.6,
+        strokeWidth = 1.5,
+        ...props
+    }: {
+        onPress?: () => void;
+        width?: number;
+        height?: number;
+        strokeColor?: string;
+        strokeOpacity?: number;
+        strokeWidth?: number;
+        [key: string]: any;
+    }) => {
         const handlePress = typeof onPress === 'function' ? onPress : () => console.warn('onPress is not a function');
         return (
             <TouchableOpacity onPress={handlePress} {...props}>
@@ -391,7 +405,10 @@ const ShuttlePage = () => {
         <View style={{ flex: 1, position: 'relative' }}>
             {/* Map as background */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                <OpenMap />
+                  <OpenMap 
+    selectedLocation={selectedLocation}
+    selectedDropPoint={selectedDropPoint}
+  />
             </View>
 
             {/* Bottom Sheet with tracker content */}
@@ -548,7 +565,7 @@ const ShuttlePage = () => {
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                             }}>
-                                                <Svg xmlns="http://www.w3.org/2000/svg" width="15" height="12" viewBox="0 0 15 12" fill="none">
+                                                <Svg width="15" height="12" viewBox="0 0 15 12" fill="none">
                                                     <Path d="M14.1667 2.6665V8.6665C14.1667 9.13984 13.9133 9.57317 13.5 9.81317V10.8332C13.5 11.1065 13.2733 11.3332 13 11.3332H12.6667C12.3933 11.3332 12.1667 11.1065 12.1667 10.8332V9.99984H7.5V10.8332C7.5 11.1065 7.27334 11.3332 7 11.3332H6.66667C6.39334 11.3332 6.16667 11.1065 6.16667 10.8332V9.81317C5.76 9.57317 5.5 9.13984 5.5 8.6665V2.6665C5.5 0.666504 7.5 0.666504 9.83334 0.666504C12.1667 0.666504 14.1667 0.666504 14.1667 2.6665ZM8.16667 7.99984C8.16667 7.63317 7.86667 7.33317 7.5 7.33317C7.13334 7.33317 6.83334 7.63317 6.83334 7.99984C6.83334 8.3665 7.13334 8.6665 7.5 8.6665C7.86667 8.6665 8.16667 8.3665 8.16667 7.99984ZM12.8333 7.99984C12.8333 7.63317 12.5333 7.33317 12.1667 7.33317C11.8 7.33317 11.5 7.63317 11.5 7.99984C11.5 8.3665 11.8 8.6665 12.1667 8.6665C12.5333 8.6665 12.8333 8.3665 12.8333 7.99984ZM12.8333 2.6665H6.83334V5.33317H12.8333V2.6665ZM4.16667 4.33317C4.14667 3.41317 3.38667 2.6665 2.46667 2.69984C2.02467 2.70877 1.60431 2.89287 1.29802 3.21166C0.991729 3.53045 0.824583 3.95784 0.833335 4.39984C0.842042 4.77797 0.978597 5.142 1.22073 5.43256C1.46287 5.72312 1.79631 5.92309 2.16667 5.99984V11.3332H2.83333V5.99984C3.62 5.83984 4.16667 5.13984 4.16667 4.33317Z" fill="white" />
                                                 </Svg>
                                             </View>
@@ -613,7 +630,7 @@ const ShuttlePage = () => {
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                             }}>
-                                                <Svg xmlns="http://www.w3.org/2000/svg" width="17" height="16" viewBox="0 0 17 16" fill="none">
+                                                <Svg  width="17" height="16" viewBox="0 0 17 16" fill="none">
                                                     <Path d="M15.1667 4.6665V10.6665C15.1667 11.1398 14.9133 11.5732 14.5 11.8132V12.8332C14.5 13.1065 14.2733 13.3332 14 13.3332H13.6667C13.3933 13.3332 13.1667 13.1065 13.1667 12.8332V11.9998H8.5V12.8332C8.5 13.1065 8.27334 13.3332 8 13.3332H7.66667C7.39334 13.3332 7.16667 13.1065 7.16667 12.8332V11.8132C6.76 11.5732 6.5 11.1398 6.5 10.6665V4.6665C6.5 2.6665 8.5 2.6665 10.8333 2.6665C13.1667 2.6665 15.1667 2.6665 15.1667 4.6665ZM9.16667 9.99984C9.16667 9.63317 8.86667 9.33317 8.5 9.33317C8.13334 9.33317 7.83334 9.63317 7.83334 9.99984C7.83334 10.3665 8.13334 10.6665 8.5 10.6665C8.86667 10.6665 9.16667 10.3665 9.16667 9.99984ZM13.8333 9.99984C13.8333 9.63317 13.5333 9.33317 13.1667 9.33317C12.8 9.33317 12.5 9.63317 12.5 9.99984C12.5 10.3665 12.8 10.6665 13.1667 10.6665C13.5333 10.6665 13.8333 10.3665 13.8333 9.99984ZM13.8333 4.6665H7.83334V7.33317H13.8333V4.6665ZM5.16667 6.33317C5.14667 5.41317 4.38667 4.6665 3.46667 4.69984C3.02467 4.70877 2.60431 4.89287 2.29802 5.21166C1.99173 5.53045 1.82458 5.95784 1.83333 6.39984C1.84204 6.77797 1.9786 7.142 2.22073 7.43256C2.46287 7.72312 2.79631 7.92309 3.16667 7.99984V13.3332H3.83333V7.99984C4.62 7.83984 5.16667 7.13984 5.16667 6.33317Z" fill="black" fill-opacity="0.5" />
                                                 </Svg>
                                             </View>
@@ -1429,7 +1446,7 @@ const ShuttlePage = () => {
                 ) : (
                     <View style={{ width: '100%', padding: 16 }}>
                         <Text style={styles.welcomeText}>
-                            <Text style={styles.boldText}>Welcome To </Text>
+                            <Text className='font-bold text-xl'>Welcome To </Text>
                             <Text style={styles.shuttleText}>Shuttle</Text>
                             <Text style={styles.appText}>App</Text>
                         </Text>
