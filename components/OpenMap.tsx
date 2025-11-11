@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Text, TouchableOpacity, StatusBar } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { View, StyleSheet, Dimensions, Text, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Svg, { G, Path, ClipPath, Rect, Defs } from 'react-native-svg';
@@ -28,6 +28,12 @@ interface MapScreenProps {
   selectedLocation?: LocationType | null;
   selectedDropPoint?: DropPoint | null;
 }
+
+// Route coordinates type
+type RouteCoordinates = {
+  latitude: number;
+  longitude: number;
+}[];
 
 // Custom SVG Marker Component - ALL BLUE for bus stops
 const CustomMapMarker = () => {
@@ -99,6 +105,8 @@ const MapScreen: React.FC<MapScreenProps> = ({
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain' | 'hybrid'>('standard');
+  const [routes, setRoutes] = useState<{ [key: string]: RouteCoordinates }>({});
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
   
   // Set initial region to KNUST area
   const [region, setRegion] = useState({
@@ -110,16 +118,147 @@ const MapScreen: React.FC<MapScreenProps> = ({
   
   const mapRef = React.useRef<MapView>(null);
 
-  // Debug logs
-  useEffect(() => {
-    console.log('=== MAP DEBUG INFO ===');
-    console.log('Selected Location:', selectedLocation?.name);
-    console.log('Selected Drop Point:', selectedDropPoint?.name);
-    
-    if (selectedLocation?.dropPoints) {
-      console.log('Drop Points Count:', selectedLocation.dropPoints.length);
+  // Fetch route from Google Directions API
+  const fetchRoute = async (
+    origin: { latitude: number; longitude: number },
+    destination: { latitude: number; longitude: number },
+    routeKey: string
+  ) => {
+    try {
+      // Using Google Directions API
+      // Note: You'll need to replace YOUR_API_KEY with your actual Google Maps API key
+      // For production, store this in environment variables
+      const GOOGLE_MAPS_API_KEY = 'AIzaSyBW23eOeYHicJMBzZ7rMa0zJODf5lVF7Do'; // Replace with your API key
+      
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=${GOOGLE_MAPS_API_KEY}`;
+      
+
+      // AIzaSyBW23eOeYHicJMBzZ7rMa0zJODf5lVF7Do
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const points = decodePolyline(data.routes[0].overview_polyline.points);
+        setRoutes(prev => ({
+          ...prev,
+          [routeKey]: points
+        }));
+      } else {
+        console.log('No route found for', routeKey);
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
     }
-  }, [selectedLocation, selectedDropPoint]);
+  };
+
+  // Decode Google's encoded polyline format
+  const decodePolyline = (encoded: string): RouteCoordinates => {
+    const points: RouteCoordinates = [];
+    let index = 0;
+    const len = encoded.length;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < len) {
+      let b;
+      let shift = 0;
+      let result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+      lng += dlng;
+
+      points.push({
+        latitude: lat / 1e5,
+        longitude: lng / 1e5,
+      });
+    }
+
+    return points;
+  };
+
+  // Fetch routes when locations change
+  useEffect(() => {
+    const fetchAllRoutes = async () => {
+      if (!selectedLocation) {
+        setRoutes({});
+        return;
+      }
+
+      setLoadingRoutes(true);
+      const newRoutes: { [key: string]: RouteCoordinates } = {};
+
+      try {
+        // Route from user location to start location
+        if (location && selectedLocation.latitude && selectedLocation.longitude) {
+          await fetchRoute(
+            {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            },
+            {
+              latitude: selectedLocation.latitude,
+              longitude: selectedLocation.longitude,
+            },
+            'user-to-start'
+          );
+        }
+
+        // Route from start location to selected drop point
+        if (selectedDropPoint && selectedLocation.latitude && selectedLocation.longitude) {
+          await fetchRoute(
+            {
+              latitude: selectedLocation.latitude,
+              longitude: selectedLocation.longitude,
+            },
+            {
+              latitude: selectedDropPoint.latitude,
+              longitude: selectedDropPoint.longitude,
+            },
+            'start-to-selected-drop'
+          );
+        }
+
+        // Routes from start location to all drop points
+        if (selectedLocation.dropPoints) {
+          for (const dropPoint of selectedLocation.dropPoints) {
+            if (dropPoint.latitude && dropPoint.longitude) {
+              await fetchRoute(
+                {
+                  latitude: selectedLocation.latitude,
+                  longitude: selectedLocation.longitude,
+                },
+                {
+                  latitude: dropPoint.latitude,
+                  longitude: dropPoint.longitude,
+                },
+                `start-to-drop-${dropPoint.id}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching routes:', error);
+      } finally {
+        setLoadingRoutes(false);
+      }
+    };
+
+    fetchAllRoutes();
+  }, [selectedLocation, selectedDropPoint, location]);
 
   // Location permissions
   useEffect(() => {
@@ -216,9 +355,6 @@ const MapScreen: React.FC<MapScreenProps> = ({
   const getAllMarkers = () => {
     const markers = [];
 
-    // Note: User location is now handled by showsUserLocation={true} 
-    // which uses the default blue pulsing marker
-
     // Selected Start Location Marker (BLUE custom marker)
     if (selectedLocation?.latitude && selectedLocation?.longitude) {
       markers.push(
@@ -281,6 +417,57 @@ const MapScreen: React.FC<MapScreenProps> = ({
     return markers;
   };
 
+  // Render all route polylines
+  const renderRoutes = () => {
+    const polylines = [];
+
+    // Route from user to start (green dashed line)
+    if (routes['user-to-start']) {
+      polylines.push(
+        <Polyline
+          key="user-to-start"
+          coordinates={routes['user-to-start']}
+          strokeColor="#34C759"
+          strokeWidth={4}
+          lineDashPattern={[10, 10]}
+        />
+      );
+    }
+
+    // Route from start to selected drop point (blue solid line - highlighted)
+    if (routes['start-to-selected-drop'] && selectedDropPoint) {
+      polylines.push(
+        <Polyline
+          key="start-to-selected-drop"
+          coordinates={routes['start-to-selected-drop']}
+          strokeColor="#007AFF"
+          strokeWidth={5}
+          zIndex={10}
+        />
+      );
+    }
+
+    // Routes from start to all other drop points (gray lines)
+    if (selectedLocation?.dropPoints) {
+      selectedLocation.dropPoints.forEach((dropPoint) => {
+        const routeKey = `start-to-drop-${dropPoint.id}`;
+        if (routes[routeKey] && dropPoint.id !== selectedDropPoint?.id) {
+          polylines.push(
+            <Polyline
+              key={routeKey}
+              coordinates={routes[routeKey]}
+              strokeColor="#8E8E93"
+              strokeWidth={3}
+              strokeOpacity={0.6}
+            />
+          );
+        }
+      });
+    }
+
+    return polylines;
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -291,8 +478,8 @@ const MapScreen: React.FC<MapScreenProps> = ({
         mapType={mapType}
         initialRegion={region}
         onRegionChangeComplete={setRegion}
-        showsUserLocation={true} // Enable default blue pulsing marker for user location
-        showsMyLocationButton={false} // We use our custom button
+        showsUserLocation={true}
+        showsMyLocationButton={false}
         showsCompass={true}
         zoomEnabled={true}
         scrollEnabled={true}
@@ -301,6 +488,7 @@ const MapScreen: React.FC<MapScreenProps> = ({
           setTimeout(fitToMarkers, 1000);
         }}
       >
+        {renderRoutes()}
         {getAllMarkers()}
       </MapView>
 
@@ -319,8 +507,13 @@ const MapScreen: React.FC<MapScreenProps> = ({
         <Icon name="zoom-out-map" size={24} color="#007AFF" />
       </TouchableOpacity>
 
-      {/* Debug Info Panel */}
-  
+      {/* Loading indicator */}
+      {loadingRoutes && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading routes...</Text>
+        </View>
+      )}
 
       {/* Error message */}
       {errorMsg && (
@@ -382,37 +575,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  debugPanel: {
+  loadingContainer: {
     position: 'absolute',
-    top: 70,
-    left: 20,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 10,
-    borderRadius: 8,
-    maxWidth: 200,
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  debugTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
+  loadingText: {
     color: 'white',
-    marginBottom: 6,
-  },
-  debugText: {
-    fontSize: 10,
-    color: 'white',
-    marginBottom: 3,
-  },
-  debugButton: {
-    backgroundColor: '#007AFF',
-    padding: 6,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  debugButtonText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    marginTop: 10,
+    fontSize: 14,
   },
   errorContainer: {
     position: 'absolute',
