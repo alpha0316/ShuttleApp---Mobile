@@ -56,7 +56,7 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
             }
         },
         isActive: () => {
-            return panY.setValue() < screenHeight;
+            return panY.__getValue() < screenHeight;
         }
     }));
 
@@ -86,7 +86,7 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
                     return;
                 }
 
-                const currentPosition = panY._value;
+                const currentPosition = panY.__getValue();
                 const threshold = screenHeight - (minHeight + (maxHeight - minHeight) / 2);
 
                 if (gestureState.vy > 0.5 || currentPosition > threshold) {
@@ -167,21 +167,7 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
     );
 });
 
-type DropPoint = {
-    id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-};
-
-type Location = {
-    id: string;
-    name: string;
-    description: string;
-    latitude: number;
-    longitude: number;
-    dropPoints: DropPoint[];
-};
+import type { Location, DropPoint } from '../../types';
 
 const ShuttlePage = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -201,13 +187,13 @@ const ShuttlePage = () => {
     // const dropPoints = selectedLocation?.dropPoints || []; // Get drop points from selected location
 
     const { filteredLocation, filteredDropPoints, routeStops } = useRouteFilter(
-    locations,
-    selectedLocation,
-    selectedDropPoint
-  );
+        locations,
+        selectedLocation,
+        selectedDropPoint
+    );
 
     const startLocation = filteredLocation;
-  const dropPoints = filteredDropPoints;
+    const dropPoints = filteredDropPoints;
 
     const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -413,19 +399,19 @@ const ShuttlePage = () => {
         setSelectedDropPoint(null);
     };
 
-    useEffect(() => {
-        console.log('Selected Location:', selectedLocation?.name);
-        console.log('Selected Drop Point:', selectedDropPoint?.name);
-    })
+    // useEffect(() => {
+    //     console.log('Selected Location:', selectedLocation?.name);
+    //     console.log('Selected Drop Point:', selectedDropPoint?.name);
+    // })
 
     return (
         <View style={{ flex: 1, position: 'relative' }}>
             {/* Map as background */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                 <OpenMap
-                     selectedLocation={filteredLocation}
-          selectedDropPoint={selectedDropPoint}
-          routeStops={routeStops} // Pass the complete route
+                    selectedLocation={filteredLocation}
+                    selectedDropPoint={selectedDropPoint}
+                    routeStops={routeStops} // Pass the complete route
                 />
             </View>
 
@@ -573,7 +559,7 @@ const ShuttlePage = () => {
                                             }}
                                         >
                                             {/* Start Location */}
-                                            <View style={{ alignItems: 'center', gap: 4 }}>
+                                            {/* <View style={{ alignItems: 'center', gap: 4 }}>
                                                 <View
                                                     style={{
                                                         width: 24,
@@ -596,20 +582,12 @@ const ShuttlePage = () => {
                                                 }}>
                                                     {startLocation.name}
                                                 </Text>
-                                            </View>
+                                            </View> */}
 
-                                            {/* Connector Line */}
-                                            <View
-                                                style={{
-                                                    width: 20,
-                                                    height: 2,
-                                                    borderRadius: 12,
-                                                    backgroundColor: '#34A853'
-                                                }}
-                                            />
+                                        
 
                                             {/* Drop Points */}
-                                            {dropPoints.map((point, index) => (
+                                            {dropPoints.map((point: { id: React.Key | null | undefined; name: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; }, index: number) => (
                                                 <React.Fragment key={point.id}>
                                                     <View style={{ alignItems: 'center', gap: 4 }}>
                                                         <View
@@ -617,17 +595,18 @@ const ShuttlePage = () => {
                                                                 width: 24,
                                                                 height: 24,
                                                                 borderRadius: 20,
-                                                                backgroundColor: selectedDropPoint?.id === point.id ? '#fafafa' : '#fafafa',
+                                                                backgroundColor: '#fafafa',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
-
+                                                                borderWidth: 1,
+                                                                borderColor: 'rgba(0,0,0,0.1)',
                                                             }}
                                                         >
                                                             <Svg width="17" height="16" viewBox="0 0 17 16" fill="none">
                                                                 <Path
                                                                     d="M15.1667 4.6665V10.6665C15.1667 11.1398 14.9133 11.5732 14.5 11.8132V12.8332C14.5 13.1065 14.2733 13.3332 14 13.3332H13.6667C13.3933 13.3332 13.1667 13.1065 13.1667 12.8332V11.9998H8.5V12.8332C8.5 13.1065 8.27334 13.3332 8 13.3332H7.66667C7.39334 13.3332 7.16667 13.1065 7.16667 12.8332V11.8132C6.76 11.5732 6.5 11.1398 6.5 10.6665V4.6665C6.5 2.6665 8.5 2.6665 10.8333 2.6665C13.1667 2.6665 15.1667 2.6665 15.1667 4.6665ZM9.16667 9.99984C9.16667 9.63317 8.86667 9.33317 8.5 9.33317C8.13334 9.33317 7.83334 9.63317 7.83334 9.99984C7.83334 10.3665 8.13334 10.6665 8.5 10.6665C8.86667 10.6665 9.16667 10.3665 9.16667 9.99984ZM13.8333 9.99984C13.8333 9.63317 13.5333 9.33317 13.1667 9.33317C12.8 9.33317 12.5 9.63317 12.5 9.99984C12.5 10.3665 12.8 10.6665 13.1667 10.6665C13.5333 10.6665 13.8333 10.3665 13.8333 9.99984ZM13.8333 4.6665H7.83334V7.33317H13.8333V4.6665ZM5.16667 6.33317C5.14667 5.41317 4.38667 4.6665 3.46667 4.69984C3.02467 4.70877 2.60431 4.89287 2.29802 5.21166C1.99173 5.53045 1.82458 5.95784 1.83333 6.39984C1.84204 6.77797 1.9786 7.142 2.22073 7.43256C2.46287 7.72312 2.79631 7.92309 3.16667 7.99984V13.3332H3.83333V7.99984C4.62 7.83984 5.16667 7.13984 5.16667 6.33317Z"
-                                                                    fill={selectedDropPoint?.id === point.id ? "black" : "black"}
-                                                                    fillOpacity={selectedDropPoint?.id === point.id ? "0.8" : "0.5"}
+                                                                    fill="black"
+                                                                    fillOpacity="0.5"
                                                                 />
                                                             </Svg>
                                                         </View>
@@ -648,7 +627,7 @@ const ShuttlePage = () => {
                                                                 width: 20,
                                                                 height: 2,
                                                                 borderRadius: 12,
-                                                                backgroundColor: selectedDropPoint?.id === point.id ? '#34A853' : 'rgba(0,0,0,0.2)',
+                                                                backgroundColor: 'rgba(0,0,0,0.2)',
                                                             }}
                                                         />
                                                     )}
@@ -679,7 +658,7 @@ const ShuttlePage = () => {
                                             alignItems: 'flex-start',
                                             gap: 12,
                                         }}>
-                                            {dropPoints.map((point, index) => (
+                                            {dropPoints.map((point: { id: React.Key | null | undefined; name: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; }, index: number) => (
                                                 <React.Fragment key={point.id}>
                                                     <View style={{
                                                         display: 'flex',
