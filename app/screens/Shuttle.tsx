@@ -17,6 +17,7 @@ import { locations } from '../../app/data/location';
 import LocationList from '../../components/LocationList';
 import OpenMap from '../../components/OpenMap';
 import useRouteFilter from '../../hooks/useRouteFilter';
+import ClosestBusIcon from '@/components/ClosestBusIcon';
 
 // BottomSheet Component Implementation
 const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode }, ref) => {
