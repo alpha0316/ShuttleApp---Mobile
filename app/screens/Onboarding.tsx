@@ -211,21 +211,239 @@ const BusStops = () => {
 
 
 const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
- const [afterDelay, setAfterDelay] = useState(false);
+    const [afterDelay, setAfterDelay] = useState(false);
 
 
     ///Starting point
-    const startingPointOpacity = useRef(new Animated.Value(1)).current;
+    const startingPointOpacity = useRef(new Animated.Value(0)).current;
     useEffect(() => {
         Animated.timing(startingPointOpacity, {
-            toValue: afterDelay ? 0.3 : 1,
-            duration: 2000,
+            toValue: afterDelay ? 0 : 1,
+            duration: 500,
             useNativeDriver: true,
         }).start();
     }, [afterDelay, startingPointOpacity]);
 
 
+    const ConnectionLine = useRef(new Animated.Value(-50)).current; // Start at -70  
+    useEffect(() => {
+        Animated.timing(ConnectionLine, {
+            toValue: afterDelay ? -100 : 0,
+            duration: 500,
+            useNativeDriver: true, // Use native driver for better performance
+        }).start();
+    }, [afterDelay]);
 
+
+
+    const locationsOpacity = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(locationsOpacity, {
+            toValue: afterDelay ? 0.1 : 1,
+            duration: 2000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, locationsOpacity]);
+
+
+
+
+    const location2 = useRef(new Animated.Value(-50)).current; // Start at -70  
+    useEffect(() => {
+        Animated.timing(location2, {
+            toValue: afterDelay ? -100 : 0,
+            duration: 500,
+            useNativeDriver: true, // Use native driver for better performance
+        }).start();
+    }, [afterDelay]);
+
+    const location3 = useRef(new Animated.Value(-50)).current; // Start at -70  
+    useEffect(() => {
+        Animated.timing(location3, {
+            toValue: afterDelay ? -100 : 0,
+            duration: 1000,
+            useNativeDriver: true, // Use native driver for better performance
+        }).start();
+    }, [afterDelay]);
+
+
+
+    const divider = useRef(new Animated.Value(-500)).current; // Start at -70  
+    useEffect(() => {
+        Animated.timing(divider, {
+            toValue: afterDelay ? -100 : 0,
+            duration: 3000,
+            useNativeDriver: true, // Use native driver for better performance
+        }).start();
+    }, [afterDelay]);
+
+
+
+    const RouteOpacity = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(RouteOpacity, {
+            toValue: afterDelay ? 0.3 : 1,
+            duration: 4000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, RouteOpacity]);
+
+
+
+    const DropPointOpacity = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(DropPointOpacity, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 6000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, DropPointOpacity]);
+
+
+
+
+
+    const journeyProgress = useRef(new Animated.Value(0)).current; // Start at 0
+    const busPosition = useRef(new Animated.Value(0)).current;
+    const [afterDelayBus, setAfterDelayBus] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setAfterDelayBus(true);
+        }, 1000); // Start animations after 1 second
+
+        return () => clearTimeout(timer);
+    }, []);
+
+
+    useEffect(() => {
+        if (afterDelayBus) {
+            // Animate the journey progress line
+            Animated.timing(journeyProgress, {
+                toValue: 1, // Full width
+                duration: 1000,
+                useNativeDriver: false, // Width animation cannot use native driver
+            }).start();
+
+            // Animate the bus position
+            Animated.timing(busPosition, {
+                toValue: 1, // Full journey
+                duration: 1000,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [afterDelayBus]);
+
+
+    const journeyLineWidth = journeyProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '60%'],
+    });
+
+    const busTranslateX = busPosition.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 10], // Adjust this value based on your layout
+    });
+
+
+    const connect = useRef(new Animated.Value(-50)).current; // Start at -70  
+    useEffect(() => {
+        Animated.timing(connect, {
+            toValue: afterDelay ? -0.001 : 0,
+            duration: 1000,
+            useNativeDriver: true, // Use native driver for better performance
+        }).start();
+    }, [afterDelay]);
+
+
+
+    const StopsOpacity = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(StopsOpacity, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 4000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, StopsOpacity]);
+
+
+
+    const Stops2 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(Stops2, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 1000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, Stops2]);
+
+
+    const StopsConnect1 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(StopsConnect1, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 1000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, StopsConnect1]);
+
+
+    const Stops3 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(Stops3, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 5000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, Stops3]);
+
+
+    const StopsConnect2 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(StopsConnect2, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 5000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, StopsConnect2]);
+
+    const Stops4 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(Stops4, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 6000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, Stops4]);
+
+
+    const StopsConnect3 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(StopsConnect3, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 6000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, StopsConnect3]);
+
+
+    const H1 = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(H1, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 6000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, H1]);
+
+    const p = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(p, {
+            toValue: afterDelay ? 0 : 1,
+            duration: 6000,
+            useNativeDriver: true,
+        }).start();
+    }, [afterDelay, p]);
 
 
 
@@ -236,8 +454,6 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-
-
 
                 <Text className="text-black text-xl font-bold"><Text className="text-green-600 text-xl font-bold">Shuttle</Text><Text className="text-amber-400 text-xl font-normal">App</Text></Text>
 
@@ -271,14 +487,14 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                     </Animated.View>
 
                     {/* Connection Line */}
-                    <View style={styles.connectionLine}>
+                    <Animated.View style={[styles.connectionLine, { transform: [{ translateY: ConnectionLine }] }]}>
                         <View style={styles.linePart} />
                         <View style={styles.lineMiddle} />
                         <View style={styles.linePart} />
-                    </View>
+                    </Animated.View>
 
                     {/* Stacked Location Cards */}
-                    <View style={styles.stackedCards}>
+                    <Animated.View style={[styles.stackedCards, { opacity: locationsOpacity }]}>
                         <View style={[styles.locationCard, styles.topCard]}>
                             <StopIcon />
                             <View style={styles.locationText}>
@@ -287,31 +503,31 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                             </View>
                         </View>
 
-                        <View style={[styles.locationCard, styles.middleCard]}>
+                        <Animated.View style={[styles.locationCard, styles.middleCard, { transform: [{ translateY: location2 }] }]}>
                             <StopIcon />
                             <View style={styles.locationText}>
                                 <Text style={styles.locationName}>Brunei</Text>
                                 <Text style={styles.locationDescription}>Campus</Text>
                             </View>
-                        </View>
+                        </Animated.View>
 
-                        <View style={[styles.locationCard, styles.bottomCard]}>
+                        <Animated.View style={[styles.locationCard, styles.bottomCard, { transform: [{ translateY: location3 }] }]}>
                             <StopIcon />
                             <View style={styles.locationText}>
                                 <Text style={styles.locationName}>Brunei</Text>
                                 <Text style={styles.locationDescription}>Campus</Text>
                             </View>
-                        </View>
-                    </View>
+                        </Animated.View>
+                    </Animated.View>
                 </View>
 
                 {/* Divider */}
-                <View style={styles.divider} />
+                <Animated.View style={[styles.divider, { transform: [{ translateX: divider }] }]} />
 
                 {/* Route Section */}
                 <View style={styles.routeSection}>
-                    <View
-                        style={{
+                    <Animated.View
+                        style={[{
                             flexDirection: 'row',
                             alignItems: 'center',
                             padding: 16,
@@ -319,7 +535,7 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                             borderColor: 'rgba(0,0,0,0.1)',
                             borderRadius: 16,
                             gap: 12,
-                        }}
+                        }, { opacity: RouteOpacity }]}
                     >
                         {/* Start */}
                         <View style={{ alignItems: 'center', gap: 4 }}>
@@ -346,22 +562,41 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: 8,
+                                // gap: 8,
                             }}
                         >
-                            <View style={{ height: 2, flex: 1, backgroundColor: '#34A853' }} />
-                            <BusIcon width={84} height={27} color="#34A853" />
-                            <View style={{
-                                width: 60,
-                                height: 1,
-                                borderWidth: 1,
-                                borderColor: '#e5e5e5',
-                                borderStyle: 'dashed',
-                                marginVertical: 12,
-                            }} />
+                            <Animated.View
+                                style={{
+                                    height: 2,
+                                    width: journeyLineWidth,
+                                    backgroundColor: '#34A853',
+                                    // position: 'absolute',
+                                    // left: 0,
+                                    // top: 0,
+                                }}
+                            />
+                            <Animated.View
+                                style={{
+                                    transform: [{ translateX: busTranslateX }],
+                                }}
+                            >
+                                <BusIcon width={84} height={27} color="#34A853" />
+                            </Animated.View>
+                            <Animated.View
+                                style={{
+                                    // width: 60,
+                                    height: 1,
+                                    borderWidth: journeyLineWidth,
+                                    borderColor: '#e5e5e5',
+                                    borderStyle: 'dashed',
+                                    marginVertical: 12,
+                                }}
+                            />
+
+
                         </View>
 
-                        <View style={{ alignItems: 'center', gap: 4 }}>
+                        <Animated.View style={[{ alignItems: 'center', gap: 4 }, { opacity: DropPointOpacity }]}>
                             <Text style={{ fontWeight: '600' }}>KSB</Text>
                             <Text
                                 style={{
@@ -378,28 +613,30 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                             <Text style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)' }}>
                                 11:58 AM
                             </Text>
-                        </View>
-                    </View>
+                        </Animated.View>
+                    </Animated.View>
 
                     {/* Bus Stops List */}
 
-                    <View className="w-0.5 h-7 relative border border-dashed ml-10 border-green-600" />
+                    <Animated.View className="w-0.5 h-7 relative border border-dashed ml-10 border-green-600" style={
+                        { transform: [{ translateY: connect }] }
+                    } />
 
 
-                    <View className='flex flex-col items-start justify-start gap-4 my-4'>
+                    <Animated.View className='flex flex-col items-start justify-start gap-4 my-4' style={{ opacity: StopsOpacity }}>
 
                         <Text className="text-center justify-center text-black text-sm font-medium  leading-5">Bus Stops</Text>
-                        <ScrollView
+                        <Animated.ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{
+                            contentContainerStyle={[{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                gap: 12,
+                                gap: 16,
                                 paddingRight: 16,
-                            }}
+                            }]}
                         >
-                            <View style={{ alignItems: 'center', gap: 4 }}>
+                            <Animated.View style={[{ alignItems: 'center', gap: 4 }]}>
                                 <View
                                     style={{
                                         width: 24,
@@ -426,21 +663,21 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                                     textAlign: 'center',
                                     maxWidth: 120,
                                 }}>
-                                    Commercial Area
+                                    Brunei
                                 </Text>
-                            </View>
+                            </Animated.View>
 
 
-                            <View
-                                style={{
+                            <Animated.View
+                                style={[{
                                     width: 20,
                                     height: 2,
                                     borderRadius: 12,
                                     backgroundColor: 'rgba(0,0,0,0.2)',
-                                }}
+                                }, { opacity: StopsConnect1 }]}
                             />
 
-                            <View style={{ alignItems: 'center', gap: 4 }}>
+                            <Animated.View style={[{ alignItems: 'center', gap: 4 }, { opacity: Stops2 }]}>
                                 <View
                                     style={{
                                         width: 24,
@@ -467,19 +704,20 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                                     textAlign: 'center',
                                     maxWidth: 80,
                                 }}>
-                                    Hall 7
+                                    Main Library
                                 </Text>
-                            </View>
-                            <View
-                                style={{
+                            </Animated.View>
+
+                            <Animated.View
+                                style={[{
                                     width: 20,
                                     height: 2,
                                     borderRadius: 12,
                                     backgroundColor: 'rgba(0,0,0,0.2)',
-                                }}
+                                }, { opacity: Stops2 }]}
                             />
 
-                            <View style={{ alignItems: 'center', gap: 4 }}>
+                            <Animated.View style={[{ alignItems: 'center', gap: 4 }, { opacity: Stops2 }]}>
                                 <View
                                     style={{
                                         width: 24,
@@ -508,17 +746,18 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                                 }}>
                                     Pentecost Busstop
                                 </Text>
-                            </View>
+                            </Animated.View>
 
-                            <View
-                                style={{
+                            <Animated.View
+                                style={[{
                                     width: 20,
                                     height: 2,
                                     borderRadius: 12,
                                     backgroundColor: 'rgba(0,0,0,0.2)',
-                                }}
+                                }, { opacity: StopsConnect3 }]}
                             />
-                            <View style={{ alignItems: 'center', gap: 4 }}>
+
+                            <Animated.View style={[{ alignItems: 'center', gap: 4 }, { opacity: StopsConnect3 }]}>
                                 <View
                                     style={{
                                         width: 24,
@@ -543,21 +782,21 @@ const OnboardingScreen = ({ onComplete }: { onComplete: () => void }) => {
                                     fontSize: 10,
                                     color: 'rgba(0,0,0,0.6)',
                                     textAlign: 'center',
-                                    maxWidth: 120,
+                                    maxWidth: 150,
                                 }}>
                                     KSB
                                 </Text>
-                            </View>
-                        </ScrollView>
-                    </View>
+                            </Animated.View>
+                        </Animated.ScrollView>
+                    </Animated.View>
 
 
                     {/* CTA Section */}
                     <View style={styles.ctaSection}>
-                        <Text style={styles.ctaTitle}>Move. Track. Connect.</Text>
-                        <Text style={styles.ctaSubtitle}>
+                        <Animated.Text style={[styles.ctaTitle, { opacity: H1 }]}>Move. Track. Connect.</Animated.Text>
+                        <Animated.Text style={[styles.ctaSubtitle, { opacity: p }]}>
                             Move smarter and stay connected across campus.
-                        </Text>
+                        </Animated.Text>
 
                         <TouchableOpacity
                             style={styles.getStartedButton}
@@ -604,7 +843,7 @@ const styles = StyleSheet.create({
         width: '100%',
         shadowRadius: 8,
         elevation: 3,
-        // opacity: startingPointOpacity
+        opacity: 10
     },
     inputLabel: {
         fontSize: 14,
@@ -654,6 +893,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 48,
         marginBottom: 12,
+        opacity: 1
     },
     linePart: {
         width: 2,

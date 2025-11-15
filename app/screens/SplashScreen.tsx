@@ -16,8 +16,8 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Shuttle</Text>
-      <Text style={[styles.text, { color: 'rgba(0, 0, 0, 0.50)' }]}>App</Text>
+      <Text className='font-bold text-green-600 text-[40px]'>Shuttle</Text>
+      <Text className='text-amber-400 text-[40px]'>App</Text>
     </View>
   );
 }
