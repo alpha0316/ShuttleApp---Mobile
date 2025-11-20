@@ -1,10 +1,11 @@
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
 import { useState } from 'react';
 import Shuttle from './screens/Shuttle';
 import Orders from './screens/Orders';
 import Profile from './screens/Profile';
 import SplashScreen from './screens/SplashScreen';
 import Onboarding from './screens/Onboarding';
+import Connect from './screens/Connect';
 import Svg, { Path } from 'react-native-svg';
 
 export default function Index() {
@@ -23,6 +24,8 @@ export default function Index() {
             return <Shuttle />;
           case 'orders':
             return <Orders />;
+                 case 'connect':
+            return <Connect />;
           case 'profile':
             return <Profile />;
           default:
@@ -68,6 +71,20 @@ export default function Index() {
             <Text>📦</Text>
             <Text style={[styles.navLabel, activeTab === 'orders' && styles.activeNavLabel]}>
               Orders
+            </Text>
+          </TouchableOpacity>
+
+             <TouchableOpacity
+            style={[styles.navItem, activeTab === 'orders' && styles.activeNavItem]}
+            onPress={() => setActiveTab('connect')}
+          >
+              <Image 
+              source={require('./../assets/images/Connect.png')}
+              // style={styles.navImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.navLabel, activeTab === 'connect' && styles.activeNavLabel]}>
+              Connect
             </Text>
           </TouchableOpacity>
 
