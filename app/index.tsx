@@ -1,5 +1,5 @@
 import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
-import { useState } from 'react';
+import { SetStateAction, useState, useEffect } from 'react';
 import Shuttle from './screens/Shuttle';
 import Orders from './screens/Orders';
 import Profile from './screens/Profile';
@@ -7,37 +7,192 @@ import SplashScreen from './screens/SplashScreen';
 import Onboarding from './screens/Onboarding';
 import Connect from './screens/Connect';
 import Svg, { Path } from 'react-native-svg';
+import Auth from './screens/Auth';
+import OTP from './screens/OTP';
+import { checkAuthStatus, markOnboardingCompleted, type AuthState } from './../utils/auth';
 
 export default function Index() {
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'onboarding' | 'main'>('splash');
+  const [currentScreen, setCurrentScreen] = useState<'splash' | 'onboarding' | 'auth' | 'otp' | 'main'>('splash');
   const [activeTab, setActiveTab] = useState('shuttle');
+  const [authData, setAuthData] = useState<{
+    phoneNumber: string; 
+    firstName: string; 
+    lastName: string;
+    isLogin: boolean;
+  } | null>(null);
+  const [authState, setAuthState] = useState<AuthState | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check if user is already authenticated on app launch
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        console.log('🚀 Initializing app...');
+        
+        // Check authentication status
+        const authStatus = await checkAuthStatus();
+        setAuthState(authStatus);
+        
+        console.log('📊 Initial auth status:', {
+          isLoggedIn: authStatus.isLoggedIn,
+          hasToken: !!authStatus.token,
+          hasUserData: !!authStatus.userData,
+          onboardingCompleted: authStatus.onboardingCompleted,
+          userPhone: authStatus.userData?.phoneNumber,
+        });
+
+        // Show splash screen for at least 1.5 seconds
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Determine which screen to show based on auth status
+        if (!authStatus.onboardingCompleted) {
+          console.log('👤 Onboarding not completed, showing onboarding');
+          setCurrentScreen('onboarding');
+        } else if (authStatus.isLoggedIn && authStatus.token && authStatus.userData) {
+          console.log('👤 User is authenticated, navigating to main');
+          setCurrentScreen('main');
+        } else {
+          console.log('👤 User not authenticated, showing auth screen');
+          setCurrentScreen('auth');
+        }
+        
+      } catch (error) {
+        console.error('❌ Error initializing app:', error);
+        // Fallback to auth screen on error
+        setCurrentScreen('auth');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    initializeApp();
+  }, []);
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'splash':
-        return <SplashScreen onComplete={() => setCurrentScreen('onboarding')} />;
+        return <SplashScreen onComplete={() => {}} />; // onComplete handled by useEffect
+      
       case 'onboarding':
-        return <Onboarding onComplete={() => setCurrentScreen('main')} />;
+        return (
+          <Onboarding 
+            onComplete={async () => {
+              try {
+                // Mark onboarding as completed
+                await markOnboardingCompleted();
+                console.log('✅ Onboarding marked as completed');
+                setCurrentScreen('auth');
+              } catch (error) {
+                console.error('❌ Error saving onboarding status:', error);
+                setCurrentScreen('auth'); // Continue anyway
+              }
+            }}
+          />
+        );
+      
+      case 'auth':
+        return (
+          <Auth 
+            onSuccess={(data) => {
+              console.log('🔍 Index - Auth onSuccess called with:', data);
+              setAuthData(data);
+              setCurrentScreen('otp');
+            }}
+            onSkip={() => {
+              // Optional: Allow skipping auth for testing
+              console.log('⚠️ Auth skipped for testing');
+              setCurrentScreen('main');
+            }}
+          />
+        );
+      
+      case 'otp':
+        if (!authData) {
+          // If no authData, go back to auth screen
+          console.log('⚠️ No auth data, redirecting to auth');
+          return (
+            <Auth 
+              onSuccess={(data) => {
+                setAuthData(data);
+                setCurrentScreen('otp');
+              }}
+              onSkip={() => setCurrentScreen('main')}
+            />
+          );
+        }
+        
+        return (
+          <OTP 
+            phoneNumber={authData.phoneNumber}
+            firstName={authData.firstName}
+            lastName={authData.lastName}
+            isLogin={authData.isLogin}
+            onSuccess={async () => {
+              console.log('🔍 Index - OTP verification successful');
+              
+              // Re-check auth status to ensure credentials were saved
+              const updatedAuthStatus = await checkAuthStatus();
+              setAuthState(updatedAuthStatus);
+              
+              if (updatedAuthStatus.isLoggedIn) {
+                console.log('✅ User successfully authenticated, navigating to main');
+                setCurrentScreen('main');
+              } else {
+                console.error('❌ Authentication failed after OTP verification');
+                // Show error and stay on OTP screen
+              }
+            }}
+            onBack={() => {
+              console.log('🔍 Index - Going back to auth');
+              setCurrentScreen('auth');
+            }}
+          />
+        );
+      
       case 'main':
+        // Pass authState to screens if needed
         switch (activeTab) {
           case 'shuttle':
-            return <Shuttle />;
+            return <Shuttle authState={authState} />;
           case 'orders':
-            return <Orders />;
-                 case 'connect':
-            return <Connect />;
+            return <Orders authState={authState} />;
+          case 'connect':
+            return <Connect authState={authState} />;
           case 'profile':
-            return <Profile />;
+            return <Profile authState={authState} onLogout={handleLogout} />;
           default:
-            return <Shuttle />;
+            return <Shuttle authState={authState} />;
         }
+      
       default:
-        return <SplashScreen onComplete={() => setCurrentScreen('onboarding')} />;
+        return <SplashScreen onComplete={() => {}} />;
     }
   };
 
-  // Don't show bottom nav during splash and onboarding
+  // Handle logout from Profile screen
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 Logging out...');
+      // Clear credentials (implement clearCredentials in your auth utils)
+      // await clearCredentials();
+      setAuthState(null);
+      setCurrentScreen('auth');
+    } catch (error) {
+      console.error('❌ Error logging out:', error);
+    }
+  };
+
+  // Don't show bottom nav during splash, onboarding, auth, and OTP
   const showBottomNav = currentScreen === 'main';
+
+  // Show loading indicator while checking auth
+  if (isCheckingAuth && currentScreen === 'splash') {
+    return (
+      <View style={styles.container}>
+        <SplashScreen onComplete={() => {}} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -74,13 +229,13 @@ export default function Index() {
             </Text>
           </TouchableOpacity>
 
-             <TouchableOpacity
-            style={[styles.navItem, activeTab === 'orders' && styles.activeNavItem]}
+          <TouchableOpacity
+            style={[styles.navItem, activeTab === 'connect' && styles.activeNavItem]}
             onPress={() => setActiveTab('connect')}
           >
-              <Image 
+            <Image 
               source={require('./../assets/images/Connect.png')}
-              // style={styles.navImage}
+              style={styles.navImage}
               resizeMode="contain"
             />
             <Text style={[styles.navLabel, activeTab === 'connect' && styles.activeNavLabel]}>
@@ -92,7 +247,7 @@ export default function Index() {
             style={[styles.navItem, activeTab === 'profile' && styles.activeNavItem]}
             onPress={() => setActiveTab('profile')}
           >
-             <Text>👤</Text>
+            <Text>👤</Text>
             <Text style={[styles.navLabel, activeTab === 'profile' && styles.activeNavLabel]}>
               Profile
             </Text>
@@ -144,5 +299,9 @@ const styles = StyleSheet.create({
   activeNavLabel: {
     color: '#34A853',
     fontWeight: '600',
+  },
+  navImage: {
+    width: 16,
+    height: 16,
   },
 });

@@ -7,6 +7,11 @@ import Svg, { G, Path, ClipPath, Rect, Defs, Mask } from 'react-native-svg';
 import { useShuttleSocket } from '../hooks/useShuttleSocket';
 import { Route } from 'expo-router';
 import ClosestBusIcon from '../components/ClosestBusIcon';
+import mqtt, { Packet } from 'mqtt';
+import useMQTTBuses from './../hooks/useMQTTBuses';
+import { AnimatedMQTTBus } from '../components/AnimatedMQTTBus';
+import * as Animatable from 'react-native-animatable';
+
 
 // Define ShuttleLocation type based on expected shuttle object structure
 
@@ -66,6 +71,21 @@ type RouteCoordinates = {
   latitude: number;
   longitude: number;
 }[];
+
+type Bus = {
+  busID: string;
+  coords: {
+    latitude: number;
+    longitude: number;
+    speed: number;
+    heading: number;
+    timestamp: number;
+  };
+  active: boolean;
+  // Add other properties if needed
+};
+
+
 
 const BusIcon = () => (
   <Svg width="84" height="27" viewBox="0 0 84 27" fill="none">
@@ -227,6 +247,9 @@ const MapScreen: React.FC<MapScreenProps> = ({
   const [route, setRoute] = useState<Route | null>(null);
   const [busRoute, setBusRoute] = useState<any[]>(propBusRoute);
   const [showClosestBus, setShowClosestBus] = useState(false);
+  
+
+
 
 
   const BASE_CUSTOMER_URL = "https://shuttle-backend-0.onrender.com/api/v1"
@@ -613,6 +636,28 @@ useEffect(() => {
   const getAllMarkers = () => {
     const markers = [];
 
+
+    // MQTT Device markers
+Object.values(devices).forEach((device) => {
+  if (device.position.latitude && device.position.longitude) {
+    markers.push(
+      <Marker
+        key={`mqtt-${device.deviceId}`}
+        coordinate={{
+          latitude: device.position.latitude,
+          longitude: device.position.longitude,
+        }}
+        title={device.name || `Device ${device.deviceId}`}
+        description={`Speed: ${device.position.speed?.toFixed(1) || 0} km/h`}
+        anchor={{ x: 0.5, y: 0.5 }}
+      >
+        
+        <BusIcon />
+      </Marker>
+    );
+  }
+});
+
     // Selected Start Location Marker (BLUE custom marker)
     if (selectedLocation?.latitude && selectedLocation?.longitude) {
       markers.push(
@@ -672,7 +717,7 @@ useEffect(() => {
     }
 
     // Driver markers - ONLY ONCE HERE
-  filteredBuses.forEach((bus) => {
+filteredBuses.forEach((bus: Driver) => {
   if (bus.coords.latitude && bus.coords.longitude) {
     // Only highlight closest bus when a location is selected
     const isClosest = selectedLocation && closestBus && closestBus.busID === bus.busID;
@@ -702,10 +747,9 @@ useEffect(() => {
         anchor={{ x: 0.5, y: 0.5 }}
       >
         {isClosest ? (
-       
-           <ClosestBusIcon />  // ✅ Closest bus gets special icon
+          <ClosestBusIcon />  // ✅ Closest bus gets special icon
         ) : (
-            <ClosestBusIcon />         // ✅ Regular buses get normal icon
+          <ClosestBusIcon />  // ✅ Regular buses get normal icon
         )}
       </Marker>
     );
@@ -783,7 +827,7 @@ const getFilteredBuses = () => {
     const hasStops = driver.busRoute?.[0]?.stops;
     if (!hasStops) return false;
     
-    return driver.busRoute[0].stops.some(stop => 
+    return driver.busRoute[0].stops.some((stop: string) => 
       stop.toLowerCase().includes(selectedRouteName) ||
       selectedRouteName.includes(stop.toLowerCase())
     );
@@ -808,7 +852,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
 }
 
 // Find closest bus (only when a location is selected)
-const findClosestBus = (buses) => {
+const findClosestBus = (buses: Driver[]): Driver | null =>{
   // Only find closest bus when a location is selected
   if (!selectedLocation || buses.length === 0) return null;
   
@@ -829,7 +873,7 @@ const findClosestBus = (buses) => {
     }
   });
   
-  console.log('Closest bus:', closestBus?.busID, 'distance:', minDistance.toFixed(2), 'km');
+  // console.log('Closest bus:', closestBus?.busID, 'distance:', minDistance.toFixed(2), 'km');
   return closestBus;
 };
 
@@ -848,18 +892,104 @@ const findClosestBus = (buses) => {
     }
   };
 
-  // Auto-focus on closest bus when it changes and a location is selected
-  useEffect(() => {
-    if (closestBus && selectedLocation) {
-      // Optionally auto-focus when closest bus is detected
-      // focusOnClosestBus();
-    }
-  }, [closestBus?.busID])
-
-
-// Usage
+  // Usage
 const filteredBuses = getFilteredBuses();
 const closestBus = findClosestBus(filteredBuses);
+  // Auto-focus on closest bus when it changes and a location is selected
+// Auto-focus on closest bus when it changes and a location is selected
+useEffect(() => {
+  if (closestBus && selectedLocation) {
+    // Optionally auto-focus when closest bus is detected
+    // focusOnClosestBus();
+  }
+}, [closestBus?.busID, selectedLocation]); // Add null check in dependency
+
+
+
+
+
+  // const [gpsData, setGpsData] = useState<PartialGpsData | null>(null);
+  // const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+  // const [] = useState([]);
+  // const [positionHistory, setPositionHistory] = useState<PositionHistory[]>([]);
+  //   const { devices, updateDevice, setSelectedDeviceId } = useMQTTBuses();
+
+      const { 
+    devices, 
+    updateDevice, 
+    processMQTTMessage, 
+    selectedDeviceId, 
+    setSelectedDeviceId,
+    connectionStatus,
+    setConnectionStatus 
+  } = useMQTTBuses();
+
+  
+  useEffect(() => {
+    const brokerUrl = "wss://35-181-168-87.sslip.io:9001";
+    const options = {
+      username: 'admin',
+      password: 'lEUmas@12',
+      clean: true,
+      reconnectPeriod: 1000,
+      connectTimeout: 5000,
+      clientId: 'web_client_' + Math.random().toString(16).substr(2, 8)
+    };
+
+    console.log('🔧 Attempting MQTT connection to:', brokerUrl);
+
+    const client = mqtt.connect(brokerUrl, options);
+
+    client.on('connect', (packet) => {
+      console.log('✅ MQTT Connected successfully!', packet);
+      setConnectionStatus('Connected');
+
+      client.subscribe('traccar/positions', { qos: 0 }, (err, granted) => {
+        if (err) {
+          console.error('❌ Subscribe error:', err);
+        } else {
+          console.log('✅ Subscribe granted:', granted);
+        }
+      });
+    });
+
+    client.on('message', (topic, message) => {
+      console.log(`📨 Message on ${topic}:`, message.toString());
+      
+      try {
+        const data: MQTTMessage = JSON.parse(message.toString());
+        
+        // Process the MQTT message using the hook
+        processMQTTMessage(data);
+        
+        // Also extract position for history if needed
+        const { latitude, longitude } = data.position;
+        
+  
+      } catch (error) {
+        console.error('❌ Parse error:', error);
+      }
+    });
+
+    client.on('error', (err) => {
+      console.error('❌ MQTT Error:', err);
+      setConnectionStatus('Error: ' + err.message);
+    });
+
+    client.on('close', () => {
+      setConnectionStatus('Disconnected');
+    });
+
+    return () => {
+      if (client.connected) {
+        client.end();
+      }
+    };
+  }, [processMQTTMessage, setConnectionStatus]);
+
+  
+
+
 
 
 
@@ -934,6 +1064,7 @@ const closestBus = findClosestBus(filteredBuses);
           )}
         </TouchableOpacity>
       )}
+
 
 
 

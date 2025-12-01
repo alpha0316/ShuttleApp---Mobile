@@ -18,6 +18,12 @@ import LocationList from '../../components/LocationList';
 import OpenMap from '../../components/OpenMap';
 import useRouteFilter from '../../hooks/useRouteFilter';
 import ClosestBusIcon from '@/components/ClosestBusIcon';
+import { AuthState } from '../../utils/auth';
+
+interface ShuttleProps {
+  authState?: AuthState | null;
+  // ... other props if any
+}
 
 // BottomSheet Component Implementation
 const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode }, ref) => {
@@ -168,9 +174,9 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
     );
 });
 
-import type { Location, DropPoint } from '../../types';
+import type { Location, DropPoint } from './../../app/data/location';
 
-const ShuttlePage = () => {
+const ShuttlePage: React.FC<ShuttleProps> = ({ authState = null }) =>  {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
     const [selectedDropPoint, setSelectedDropPoint] = useState<DropPoint | null>(null);
