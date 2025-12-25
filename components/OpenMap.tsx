@@ -252,7 +252,7 @@ const MapScreen: React.FC<MapScreenProps> = ({
 
 
 
-  const BASE_CUSTOMER_URL = "https://shuttle-backend-0.onrender.com/api/v1"
+  const BASE_CUSTOMER_URL = "https://shuttle-backend-0.onrender.com"
 
 
 
@@ -262,13 +262,13 @@ const MapScreen: React.FC<MapScreenProps> = ({
   useEffect(() => {
     const fetchDrivers = async () => {
       try {
-        const response = await fetch(`${BASE_CUSTOMER_URL}/drivers/drivers`);
+        const response = await fetch(`${BASE_CUSTOMER_URL}/api/drivers/drivers`);
         if (!response.ok) {
           throw new Error("Failed to fetch drivers");
         }
 
         const data = await response.json();
-        console.log('API Drivers fetched:', data.drivers?.length || 0);
+        console.log('API Drivers fetched:', data.drivers || 0);
 
         // Set drivers from API
         const apiDrivers: Driver[] = data.drivers || [];

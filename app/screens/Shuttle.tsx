@@ -79,7 +79,7 @@ const BottomSheet = React.forwardRef(({ children }: { children: React.ReactNode 
 
                 if (gestureState.dy > 0) {
                     // Dragging down - limit to minHeight
-                    const newValue = Math.max(screenHeight - maxHeight, panY._value + gestureState.dy);
+                    const newValue = Math.max(screenHeight - maxHeight, panY.__getValue() + gestureState.dy);
                     panY.setValue(Math.min(newValue, screenHeight - minHeight));
                 } else {
                     // Dragging up - limit to maxHeight
